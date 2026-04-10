@@ -222,7 +222,8 @@ extension SocketEnginePollable {
     public func sendPollMessage(_ message: String, withType type: SocketEnginePacketType, withData datas: [Data], completion: (() -> ())? = nil) {
         DefaultSocketLogger.Logger.log("Sending poll: \(message) as type: \(type.rawValue)", type: "SocketEnginePolling")
 
-        postWait.append((String(type.rawValue) + message, completion))
+        let fixedMessage: String = doubleEncodeUTF8(message)
+        postWait.append((String(type.rawValue) + fixedMessage, completion))
 
         for data in datas {
             if case let .right(bin) = createBinaryDataForSend(using: data) {

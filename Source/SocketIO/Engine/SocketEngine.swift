@@ -506,17 +506,23 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
             return
         }
 
+        let fixedString: String = fixDoubleUTF8(message)
+
         switch type {
         case .message:
-            handleMessage(String(message.dropFirst()))
+//            handleMessage(String(message.dropFirst()))
+            handleMessage(String(fixedString.dropFirst()))
         case .noop:
             handleNOOP()
         case .pong:
-            handlePong(with: message)
+//            handlePong(with: message)
+            handlePong(with: fixedString)
         case .open:
-            handleOpen(openData: String(message.dropFirst()))
+//            handleOpen(openData: String(message.dropFirst()))
+            handleOpen(openData: String(fixedString.dropFirst()))
         case .close:
-            handleClose(message)
+//            handleClose(message)
+            handleClose(fixedString)
         default:
             DefaultSocketLogger.Logger.log("Got unknown packet type", type: SocketEngine.logType)
         }
