@@ -1,12 +1,9 @@
-# v15.0.0
+# v14.0.0
 
 - Minimum version of the client is now Swift 5.0.
 - Migrated Starscream dependency from 3.0.x to 4.0.x.
 - **BREAKING**: Removed the `SSLSecurity` wrapper class and `SSLCert`; the `.security` option now takes Starscream's `CertificatePinning` (use `FoundationSecurity`). Self-signed certs are handled via `selfSigned`/`FoundationSecurity(allowSelfSigned:)`.
-
-# v14.0.0
-
-- Minimum version of the client is now Swift 4.2.
+- Add the `useCustomEngine` option. When `false` (iOS 13+), the WebSocket transport uses the system's `URLSession`-based engine instead of Starscream's built-in engine.
 - Add exponential backoff for reconnects, with `reconnectWaitMax` and `randomizationFactor` options [#1149](https://github.com/socketio/socket.io-client-swift/pull/1149)
 - `statusChange` event's data format adds a second value, the raw value of the status. This is for use in Objective-C. [#1147](https://github.com/socketio/socket.io-client-swift/issues/1147)
 

@@ -96,6 +96,10 @@ public enum SocketIOClientOption : ClientOption {
     /// Sets an NSURLSessionDelegate for the underlying engine. Useful if you need to handle self-signed certs.
     case sessionDelegate(URLSessionDelegate)
 
+    /// If passed `false`, the WebSocket transport will be configured with the system's `URLSession`-based engine
+    /// instead of Starscream's built-in engine. Defaults to `true`.
+    case useCustomEngine(Bool)
+
     // MARK: Properties
 
     /// The description of this option.
@@ -143,6 +147,8 @@ public enum SocketIOClientOption : ClientOption {
             description = "security"
         case .sessionDelegate:
             description = "sessionDelegate"
+        case .useCustomEngine:
+            description = "useCustomEngine"
         }
 
         return description
@@ -192,6 +198,8 @@ public enum SocketIOClientOption : ClientOption {
             value = signed
         case let .sessionDelegate(delegate):
             value = delegate
+        case let .useCustomEngine(enable):
+            value = enable
         }
 
         return value

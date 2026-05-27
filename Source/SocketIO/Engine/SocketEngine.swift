@@ -26,6 +26,12 @@ import Dispatch
 import Foundation
 import Starscream
 
+/// Errors that can occur within the engine's WebSocket transport.
+enum EngineError : Error {
+    /// The WebSocket connection was cancelled.
+    case canceled
+}
+
 /// The class that handles the engine.io protocol and transports.
 /// See `SocketEnginePollable` and `SocketEngineWebsocket` for transport specific methods.
 open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, SocketEngineWebsocket, ConfigSettable, WebSocketDelegate {
@@ -119,6 +125,10 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
 
     /// `true` if the WebSocket transport is currently connected.
     public private(set) var wsConnected = false
+
+    /// If `true`, the engine uses Starscream's built-in WebSocket engine. If `false`, the WebSocket transport is
+    /// configured with the system's `URLSession`-based engine (requires the appropriate OS version).
+    public private(set) var useCustomEngine = true
 
     /// The client for this engine.
     public weak var client: SocketEngineClient?
@@ -287,7 +297,7 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
         addHeaders(to: &req, includingCookies: session?.configuration.httpCookieStorage?.cookies(for: urlPollingWithSid))
 
         let pinner = certPinner ?? (selfSigned ? FoundationSecurity(allowSelfSigned: true) : FoundationSecurity())
-        ws = WebSocket(request: req, certPinner: pinner, compressionHandler: compress ? WSCompression() : nil)
+        ws = WebSocket(request: req, certPinner: pinner, compressionHandler: compress ? WSCompression() : nil, useCustomEngine: useCustomEngine)
         ws?.callbackQueue = engineQueue
         ws?.delegate = self
         ws?.connect()
@@ -571,6 +581,8 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
                 self.certPinner = security
             case .compress:
                 self.compress = true
+            case let .useCustomEngine(enable):
+                self.useCustomEngine = enable
             default:
                 continue
             }
@@ -627,7 +639,10 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
             wsConnected = true
             self.client?.engineDidWebsocketUpgrade(headers: headers)
             websocketDidConnect()
-        case .disconnected, .cancelled, .peerClosed:
+        case .cancelled:
+            wsConnected = false
+            websocketDidDisconnect(error: EngineError.canceled)
+        case .disconnected, .peerClosed:
             wsConnected = false
             websocketDidDisconnect(error: nil)
         case let .text(msg):
