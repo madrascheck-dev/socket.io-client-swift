@@ -28,6 +28,14 @@ import Starscream
 
 /// Protocol that is used to implement socket.io WebSocket support
 public protocol SocketEngineWebsocket : SocketEngineSpec {
+    // MARK: Properties
+
+    /// The WebSocket for this engine.
+    var ws: WebSocket? { get }
+
+    /// `true` if the WebSocket transport is currently connected.
+    var wsConnected: Bool { get }
+
     // MARK: Methods
 
     /// Sends an engine.io message through the WebSocket transport.
@@ -47,7 +55,7 @@ public protocol SocketEngineWebsocket : SocketEngineSpec {
 // WebSocket methods
 extension SocketEngineWebsocket {
     func probeWebSocket() {
-        if ws?.isConnected ?? false {
+        if wsConnected {
             sendWebSocketMessage("probe", withType: .ping, withData: [], completion: nil)
         }
     }

@@ -28,7 +28,7 @@ import Starscream
 
 /// The class that handles the engine.io protocol and transports.
 /// See `SocketEnginePollable` and `SocketEngineWebsocket` for transport specific methods.
-open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, SocketEngineWebsocket, ConfigSettable {
+open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, SocketEngineWebsocket, ConfigSettable, WebSocketDelegate {
     // MARK: Properties
 
     private static let logType = "SocketEngine"
@@ -117,6 +117,9 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
     /// The WebSocket for this engine.
     public private(set) var ws: WebSocket?
 
+    /// `true` if the WebSocket transport is currently connected.
+    public private(set) var wsConnected = false
+
     /// The client for this engine.
     public weak var client: SocketEngineClient?
 
@@ -135,7 +138,7 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
     private var pongsMissedMax = 0
     private var probeWait = ProbeWaitQueue()
     private var secure = false
-    private var security: SocketIO.SSLSecurity?
+    private var certPinner: CertificatePinning?
     private var selfSigned = false
 
     // MARK: Initializers
@@ -283,42 +286,10 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
 
         addHeaders(to: &req, includingCookies: session?.configuration.httpCookieStorage?.cookies(for: urlPollingWithSid))
 
-        ws = WebSocket(request: req)
+        let pinner = certPinner ?? (selfSigned ? FoundationSecurity(allowSelfSigned: true) : FoundationSecurity())
+        ws = WebSocket(request: req, certPinner: pinner, compressionHandler: compress ? WSCompression() : nil)
         ws?.callbackQueue = engineQueue
-        ws?.enableCompression = compress
-        ws?.disableSSLCertValidation = selfSigned
-        ws?.security = security?.security
-
-        ws?.onConnect = {[weak self] in
-            guard let this = self else { return }
-
-            this.websocketDidConnect()
-        }
-
-        ws?.onDisconnect = {[weak self] error in
-            guard let this = self else { return }
-
-            this.websocketDidDisconnect(error: error)
-        }
-
-        ws?.onData = {[weak self] data in
-            guard let this = self else { return }
-
-            this.parseEngineData(data)
-        }
-
-        ws?.onText = {[weak self] message in
-            guard let this = self else { return }
-
-            this.parseEngineMessage(message)
-        }
-
-        ws?.onHttpResponseHeaders = {[weak self] headers in
-            guard let this = self else { return }
-
-            this.client?.engineDidWebsocketUpgrade(headers: headers)
-        }
-
+        ws?.delegate = self
         ws?.connect()
     }
 
@@ -597,7 +568,7 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
             case let .selfSigned(selfSigned):
                 self.selfSigned = selfSigned
             case let .security(security):
-                self.security = security
+                self.certPinner = security
             case .compress:
                 self.compress = true
             default:
@@ -608,7 +579,7 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
 
     // Moves from long-polling to websockets
     private func upgradeTransport() {
-        if ws?.isConnected ?? false {
+        if wsConnected {
             DefaultSocketLogger.Logger.log("Upgrading transport to WebSockets", type: SocketEngine.logType)
 
             fastUpgrade = true
@@ -648,6 +619,33 @@ open class SocketEngine : NSObject, URLSessionDelegate, SocketEnginePollable, So
     }
 
     // WebSocket Methods
+
+    /// Delegate method for Starscream WebSocket events.
+    public func didReceive(event: WebSocketEvent, client: WebSocketClient) {
+        switch event {
+        case let .connected(headers):
+            wsConnected = true
+            self.client?.engineDidWebsocketUpgrade(headers: headers)
+            websocketDidConnect()
+        case .disconnected, .cancelled, .peerClosed:
+            wsConnected = false
+            websocketDidDisconnect(error: nil)
+        case let .text(msg):
+            parseEngineMessage(msg)
+        case let .binary(data):
+            parseEngineData(data)
+        case let .error(error):
+            wsConnected = false
+            websocketDidDisconnect(error: error)
+        case let .viabilityChanged(isViable):
+            if !isViable {
+                wsConnected = false
+                websocketDidDisconnect(error: nil)
+            }
+        case .ping, .pong, .reconnectSuggested:
+            break
+        }
+    }
 
     private func websocketDidConnect() {
         if !forceWebsockets {

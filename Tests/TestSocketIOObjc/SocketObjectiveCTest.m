@@ -94,11 +94,6 @@
     [self.socket off:@"test"];
 }
 
-- (void)testSSLSecurity {
-    SSLSecurity* sec = [[SSLSecurity alloc] initWithUsePublicKeys:0];
-    sec = nil;
-}
-
 - (void)testStatusChangeHandler {
     XCTestExpectation* expect = [self expectationWithDescription:@"statusChange should be correctly called"];
 

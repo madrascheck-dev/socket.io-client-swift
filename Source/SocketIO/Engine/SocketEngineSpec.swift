@@ -85,9 +85,6 @@ import Starscream
     @available(*, deprecated, message: "No longer needed, if we're not polling, then we must be doing websockets")
     var websocket: Bool { get }
 
-    /// The WebSocket for this engine.
-    var ws: WebSocket? { get }
-
     // MARK: Initializers
 
     /// Creates a new engine.

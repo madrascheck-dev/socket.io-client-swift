@@ -1,3 +1,9 @@
+# v15.0.0
+
+- Minimum version of the client is now Swift 5.0.
+- Migrated Starscream dependency from 3.0.x to 4.0.x.
+- **BREAKING**: Removed the `SSLSecurity` wrapper class and `SSLCert`; the `.security` option now takes Starscream's `CertificatePinning` (use `FoundationSecurity`). Self-signed certs are handled via `selfSigned`/`FoundationSecurity(allowSelfSigned:)`.
+
 # v14.0.0
 
 - Minimum version of the client is now Swift 4.2.

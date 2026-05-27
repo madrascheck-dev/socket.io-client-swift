@@ -87,8 +87,8 @@ public enum SocketIOClientOption : ClientOption {
     /// Set `true` if your server is using secure transports.
     case secure(Bool)
 
-    /// Allows you to set which certs are valid. Useful for SSL pinning.
-    case security(SSLSecurity)
+    /// Allows you to set which certs are valid. Useful for SSL pinning. Takes a Starscream `CertificatePinning`.
+    case security(CertificatePinning)
 
     /// If you're using a self-signed set. Only use for development.
     case selfSigned(Bool)
